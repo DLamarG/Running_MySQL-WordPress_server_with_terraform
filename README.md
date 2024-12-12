@@ -1,0 +1,2 @@
+# wordpress_and_mysql_on_EC2
+# Running_MySQL-WordPress_server_with_terraform
