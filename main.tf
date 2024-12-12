@@ -13,7 +13,7 @@ resource "aws_vpc" "lamar_main" {
   }
 }
 
-# Subnets
+# Public Subnet
 resource "aws_subnet" "lamar_public_subnet" {
   vpc_id                  = aws_vpc.lamar_main.id
   cidr_block              = "10.0.1.0/24"
@@ -21,15 +21,6 @@ resource "aws_subnet" "lamar_public_subnet" {
   availability_zone       = "us-east-1a"
   tags = {
     Name = "lamar-public-subnet"
-  }
-}
-
-resource "aws_subnet" "lamar_private_subnet" {
-  vpc_id            = aws_vpc.lamar_main.id
-  cidr_block        = "10.0.2.0/24"
-  availability_zone = "us-east-1a"
-  tags = {
-    Name = "lamar-private-subnet"
   }
 }
 
@@ -65,10 +56,17 @@ resource "aws_security_group" "lamar_mysql_sg" {
   vpc_id = aws_vpc.lamar_main.id
 
   ingress {
-    from_port       = 3306
-    to_port         = 3306
-    protocol        = "tcp"
-    security_groups = [aws_security_group.lamar_wordpress_sg.id]
+    from_port   = 3306
+    to_port     = 3306
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
   }
 
   egress {
@@ -116,7 +114,7 @@ resource "aws_security_group" "lamar_wordpress_sg" {
 resource "aws_instance" "lamar_mysql_instance" {
   ami           = "ami-0e2c8caa4b6378d8c" # Replace with a valid Ubuntu AMI ID
   instance_type = "t2.micro"
-  subnet_id     = aws_subnet.lamar_private_subnet.id
+  subnet_id     = aws_subnet.lamar_public_subnet.id
   security_groups = [aws_security_group.lamar_mysql_sg.id]
   key_name        = "lamar_tf_KP"
 
@@ -149,6 +147,7 @@ resource "aws_instance" "lamar_wordpress_instance" {
   user_data = <<-EOF
               #!/bin/bash
               sudo apt update
+              sudo apt upgrade
               sudo apt install -y apache2 php php-mysql wget
               wget https://wordpress.org/latest.tar.gz
               tar -xvzf latest.tar.gz
@@ -157,16 +156,6 @@ resource "aws_instance" "lamar_wordpress_instance" {
               sudo chmod -R 755 /var/www/html/wordpress
               sudo rm /var/www/html/index.html
               sudo systemctl restart apache2
-              
-              # Configure WordPress to connect to MySQL
-              wp_config_file="/var/www/html/wordpress/wp-config.php"
-              cp /var/www/html/wordpress/wp-config-sample.php $wp_config_file
-              sed -i "s/database_name_here/wordpress_db/" $wp_config_file
-              sed -i "s/username_here/wp_user/" $wp_config_file
-              sed -i "s/password_here/secure_password/" $wp_config_file
-              sed -i "s/localhost/${aws_instance.lamar_mysql_instance.private_ip}/" $wp_config_file
-              
-              echo "WordPress setup completed successfully" > /tmp/wordpress_setup.log
             EOF
 
   tags = {
@@ -178,6 +167,7 @@ resource "aws_instance" "lamar_wordpress_instance" {
 output "lamar_public_ip" {
   value = aws_instance.lamar_wordpress_instance.public_ip
 }
+
 
 
 
