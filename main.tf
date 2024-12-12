@@ -56,17 +56,17 @@ resource "aws_security_group" "lamar_mysql_sg" {
   vpc_id = aws_vpc.lamar_main.id
 
   ingress {
-    from_port   = 3306
-    to_port     = 3306
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    from_port       = 3306
+    to_port         = 3306
+    protocol        = "tcp"
+    cidr_blocks     = ["0.0.0.0/0"]
   }
 
   ingress {
-    from_port   = 22
-    to_port     = 22
-    protocol    = "tcp"
-    cidr_blocks = ["0.0.0.0/0"]
+    from_port       = 22
+    to_port         = 22
+    protocol        = "tcp"
+    cidr_blocks     = ["0.0.0.0/0"]
   }
 
   egress {
@@ -121,12 +121,19 @@ resource "aws_instance" "lamar_mysql_instance" {
   user_data = <<-EOF
               #!/bin/bash
               sudo apt update
+              sleep 60
               sudo apt install -y mysql-server
+              sleep 60
               sudo sed -i "s/bind-address.*/bind-address = 0.0.0.0/" /etc/mysql/mysql.conf.d/mysqld.cnf
+              sleep 60
               sudo systemctl restart mysql
+              sleep 60
               sudo mysql -e "CREATE DATABASE wordpress_db;"
+              sleep 60
               sudo mysql -e "CREATE USER 'wp_user'@'%' IDENTIFIED BY 'secure_password';"
+              sleep 60
               sudo mysql -e "GRANT ALL PRIVILEGES ON wordpress_db.* TO 'wp_user'@'%';"
+              sleep 60
               sudo mysql -e "FLUSH PRIVILEGES;"
               echo "MySQL setup completed successfully" > /tmp/mysql_setup.log
             EOF
@@ -147,14 +154,23 @@ resource "aws_instance" "lamar_wordpress_instance" {
   user_data = <<-EOF
               #!/bin/bash
               sudo apt update
-              sudo apt upgrade
+              sleep 60
+              sudo apt upgrade -y
+              sleep 60
               sudo apt install -y apache2 php php-mysql wget
+              sleep 60
               wget https://wordpress.org/latest.tar.gz
+              sleep 60
               tar -xvzf latest.tar.gz
+              sleep 60
               sudo mv wordpress /var/www/html/
+              sleep 60
               sudo chown -R www-data:www-data /var/www/html/wordpress
+              sleep 60
               sudo chmod -R 755 /var/www/html/wordpress
+              sleep 60
               sudo rm /var/www/html/index.html
+              sleep 60
               sudo systemctl restart apache2
             EOF
 
